@@ -25,7 +25,6 @@
   SET SESSION query_cache_type=0;
   ```
 
-  
 
 - Migrate data (mariadb to clickhouse):
 
@@ -56,8 +55,6 @@ SELECT COALESCE(SUM(CASE WHEN t1.state = 0 THEN t1.duration end), 0) as OK, COAL
 SELECT COALESCE(SUM(CASE WHEN t1.state = 0 THEN t1.duration end), 0) as OK, COALESCE(SUM(CASE WHEN t1.state = 1 THEN t1.duration end), 0) as WARNING, COALESCE(SUM(CASE WHEN t1.state = 2 THEN t1.duration end), 0) as CRITICAL, COALESCE(SUM(CASE WHEN t1.state = 3 THEN t1.duration end), 0) as UNKNOWN FROM (SELECT state, if(dummy = 0,0, -toUnixTimestamp(state_time) + dummy) as duration, lagInFrame(toUnixTimestamp(state_time), 1, 0) OVER (ORDER BY state_time DESC ROWS BETWEEN 1 PRECEDING AND 1 PRECEDING) as dummy FROM icinga_statehistory WHERE object_id='203680' and state_time >= '2024-11-15 03:23:42' and state_time <= '2024-11-17 04:23:42'
     order by state_time desc) AS t1;
 ```
-
-
 
 ![image-20250306173413526](./README.assets/image-20250306173413526.png)
 
