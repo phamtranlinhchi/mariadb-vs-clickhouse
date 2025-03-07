@@ -2,11 +2,10 @@
 
 #### 1. Setup
 
-- MariaDB: 
-  - host: 10.98.15.8
-  - mariadb user: root
+- MariaDB: 10.98.15.8
+  - user: root
 - ClickHouse: 10.98.15.9
-  - clickhouse user: default
+  - user: default
 
 - Để clickhouse host kết nối được tới mariadb cần cấu hình trên mariadb host:
 
