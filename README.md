@@ -61,9 +61,9 @@ clickhouse-mysql --src-server-id 1 --migrate-table --src-wait --nice-pause 1 --s
 
    
 
-   ![image-20250306173413526](./Performance Testing MariaDB vs ClickHouse.assets/image-20250306173413526.png)
+   ![image-20250306173413526](./README.assets/image-20250306173413526.png)
 
-   ![image-20250306173303253](./Performance Testing MariaDB vs ClickHouse.assets/image-20250306173303253.png)
+   ![image-20250306173303253](./README.assets/image-20250306173303253.png)
 
    
 
@@ -207,15 +207,15 @@ clickhouse-mysql --src-server-id 1 --migrate-table --src-wait --nice-pause 1 --s
    ORDER BY n.start_time DESC;
    ```
 
-   ![image-20250307110848351](./Performance Testing MariaDB vs ClickHouse.assets/image-20250307110848351.png)
+   ![image-20250307110848351](./README.assets/image-20250307110848351.png)
 
-   ![image-20250307110947602](./Performance Testing MariaDB vs ClickHouse.assets/image-20250307110947602.png)
+   ![image-20250307110947602](./README.assets/image-20250307110947602.png)
 
-   ![image-20250307111447899](./Performance Testing MariaDB vs ClickHouse.assets/image-20250307111447899.png)
+   ![image-20250307111447899](./README.assets/image-20250307111447899.png)
 
-   ![image-20250307111542224](./Performance Testing MariaDB vs ClickHouse.assets/image-20250307111542224.png)
+   ![image-20250307111542224](./README.assets/image-20250307111542224.png)
 
-   ![image-20250307110021179](./Performance Testing MariaDB vs ClickHouse.assets/image-20250307110021179.png)
+   ![image-20250307110021179](./README.assets/image-20250307110021179.png)
 
    
 
@@ -226,24 +226,32 @@ clickhouse-mysql --src-server-id 1 --migrate-table --src-wait --nice-pause 1 --s
    SELECT    state_time as Time,   t4.name1 as Host,   t1.state AS State,   t1.state_type AS statetype,   t1.output as Description,   t1.check_source as Check_Source FROM icinga_statehistory t1 INNER JOIN icinga_hostgroup_members t2 on t1.object_id = t2.host_object_id INNER JOIN icinga_hostgroups t3 on t2.hostgroup_id = t3.hostgroup_id INNER JOIN icinga_objects t4 ON t1.object_id = t4.object_id WHERE t3.alias IN ('DBB_HPG', 'HNI') AND state_time >= '2023-11-15' AND state_time <= '2024-12-15';
    ```
 
-   ![image-20250306173615058](./Performance Testing MariaDB vs ClickHouse.assets/image-20250306173615058.png)
+   ![image-20250307134637316](./README.assets/image-20250307134637316.png)
 
+   ![image-20250307134717965](./README.assets/image-20250307134717965.png)
+
+   ![image-20250307134751444](./README.assets/image-20250307134751444.png)
+
+   ![image-20250307134833972](./README.assets/image-20250307134833972.png)
    
-
+   ![image-20250307134033969](./README.assets/image-20250307134033969.png)
+   
+   
+   
    4. Alert History - Service
-
+   
    ```sql
    # Alert History - Service
    SELECT    state_time as Time,   t2.display_name as Host,   t3.display_name as Service,   t1.state AS State,   t1.state_type AS statetype,   t1.output as Description,   t1.check_source as Check_Source FROM icinga_statehistory t1 INNER JOIN icinga_services t2 ON t1.object_id = t2.service_object_id INNER JOIN icinga_hosts t3 ON t2.host_object_id = t3.host_object_id INNER JOIN icinga_hostgroup_members t4 ON t2.host_object_id = t4.host_object_id INNER JOIN icinga_hostgroups t5 on t4.hostgroup_id = t5.hostgroup_id WHERE t5.alias IN ('DBB_HPG', 'HNI') AND state_time >= '2023-11-15' AND state_time <= '2024-12-15' LIMIT 50000;
    ```
 
-   ![image-20250306174522912](./Performance Testing MariaDB vs ClickHouse.assets/image-20250306174522912.png)
-
+   ![image-20250306174522912](./README.assets/image-20250306174522912.png)
    
-
    
-
    
-
+   
+   
+   
+   
    
 
