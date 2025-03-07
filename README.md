@@ -4,9 +4,9 @@
 
 - MariaDB: 
   - host: 10.98.15.8
-  - mariadb user: root(juniper@123) 
+  - mariadb user: root
 - ClickHouse: 10.98.15.9
-  - clickhouse user: default(juniper@123)
+  - clickhouse user: default
 
 
 
@@ -31,7 +31,7 @@
 
    
 
-3. Migrate data (đứng trên clickhouse host):
+3. Migrate data (on clickhouse host):
 
 ```bash
 apt-get install python3-pip
