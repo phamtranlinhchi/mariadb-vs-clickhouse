@@ -22,7 +22,21 @@
 - Disable cache
 
   ```sql
+  # [mariadb]
   SET SESSION query_cache_type=0;
+  ```
+
+  ```xml
+  # MariaDB
+  [mysqld]
+  query_cache_type = 0
+  query_cache_size = 0
+  
+  # ClickHouse
+  <clickhouse>
+      <mark_cache_size>0</mark_cache_size>
+      <uncompressed_cache_size>0</uncompressed_cache_size>
+  </clickhouse>
   ```
 
 
@@ -40,7 +54,31 @@ clickhouse-mysql --src-server-id 1 --migrate-table --src-wait --nice-pause 1 --s
 
 
 
-#### 2. Testing
+#### 2. ClickHouse supported filters (WHERE clause) but mariadb does not
+
+- `match(string, pattern)`: Returns whether string `string` matches the regular expression `pattern`
+
+  ```sql
+  select check_source from icinga_statehistory where match(check_source, '^m.*')
+  ```
+
+- `ilike`:  for searching simple words (same as `like`) but case-insensitive.
+
+- `has(array, value)`: Checks if an array contains a specific value
+
+- `indexOf(array, value)`: Finds the index (1-based) of a value in an array
+
+- `length(array)`: Returns the number of elements in an array
+
+- `greatCircleDistance()`: Computes the shortest distance (in meters) between two geographical points using latitude and longitude
+
+- `JSONExtract()`,`JSONExtractInt()`, `JSONExtractString()`: Extracts a value from a JSON string with a specified type
+
+- `tupleElement(tuple, index)`: Extracts an element from a tuple based on its index (1-based)
+
+  
+
+#### 3. Testing
 
 1. SLA report query
 
@@ -124,7 +162,7 @@ JOIN icinga_objects oc ON c.contact_object_id = oc.object_id
 JOIN icinga_objects oh ON n.object_id = oh.object_id
 LEFT JOIN icinga_contactnotificationmethods cn ON cn.contactnotification_id = c.contactnotification_id
 LEFT JOIN icinga_objects occ ON cn.command_object_id = occ.object_id
-WHERE UNIX_TIMESTAMP(n.start_time) BETWEEN UNIX_TIMESTAMP('2023-11-15') AND UNIX_TIMESTAMP('2024-12-15') AND oh.objecttype_id = 1 AND oh.name1 in ('CSG-NDH_NDH_KCN_HOA_XA','CSG-QNH_DTU_YEN_THO_2','CSG-QNH_DTU_MAO_KHE_3','CSG-HDG_THA_THANH_HAI','CSG-QNH_DTU_VIET_DAN_2','CSG-TH_TGA_MAI_LAM_4','CSG-HDG_KMN_LONG_XUYEN_2','ME-CSR-HNI-C69.1---HN_BDH_04_LANG_HA','ME-CSR-HNI-C136.3---HN_BDH_BAO_TANG_B52','ME-CSR-HNI-C61.4---HN_DDA_LINH_QUANG','ME-CSR-HNI-C173.2---H2_MLH_YEN_NHAN','ME-CSR-HNI-C122.5---HN_DDA_PHAO_DAI_LANG')
+WHERE n.start_time BETWEEN '2023-11-15' AND '2024-12-15' AND oh.objecttype_id = 1 AND oh.name1 in ('CSG-NDH_NDH_KCN_HOA_XA','CSG-QNH_DTU_YEN_THO_2','CSG-QNH_DTU_MAO_KHE_3','CSG-HDG_THA_THANH_HAI','CSG-QNH_DTU_VIET_DAN_2','CSG-TH_TGA_MAI_LAM_4','CSG-HDG_KMN_LONG_XUYEN_2','ME-CSR-HNI-C69.1---HN_BDH_04_LANG_HA','ME-CSR-HNI-C136.3---HN_BDH_BAO_TANG_B52','ME-CSR-HNI-C61.4---HN_DDA_LINH_QUANG','ME-CSR-HNI-C173.2---H2_MLH_YEN_NHAN','ME-CSR-HNI-C122.5---HN_DDA_PHAO_DAI_LANG')
 AND n.notification_id > ((select max(notification_id) from icinga_notifications) - 400000000)
 ORDER BY n.start_time desc;
 ```
@@ -195,7 +233,7 @@ JOIN icinga_objects oc ON c.contact_object_id = oc.object_id
 JOIN icinga_objects oh ON n.object_id = oh.object_id
 LEFT JOIN icinga_contactnotificationmethods cn ON cn.contactnotification_id = c.contactnotification_id
 LEFT JOIN icinga_objects occ ON cn.command_object_id = occ.object_id
-WHERE toUnixTimestamp(n.start_time) BETWEEN toUnixTimestamp('2023-11-15') AND toUnixTimestamp('2024-12-15') 
+WHERE n.start_time BETWEEN '2023-11-15' AND '2024-12-15' 
   AND oh.objecttype_id = 1 
   AND oh.name1 IN ('CSG-NDH_NDH_KCN_HOA_XA','CSG-QNH_DTU_YEN_THO_2','CSG-QNH_DTU_MAO_KHE_3','CSG-HDG_THA_THANH_HAI','CSG-QNH_DTU_VIET_DAN_2','CSG-TH_TGA_MAI_LAM_4','CSG-HDG_KMN_LONG_XUYEN_2','ME-CSR-HNI-C69.1---HN_BDH_04_LANG_HA','ME-CSR-HNI-C136.3---HN_BDH_BAO_TANG_B52','ME-CSR-HNI-C61.4---HN_DDA_LINH_QUANG','ME-CSR-HNI-C173.2---H2_MLH_YEN_NHAN','ME-CSR-HNI-C122.5---HN_DDA_PHAO_DAI_LANG')
   AND n.notification_id > ((SELECT max(notification_id) FROM icinga_notifications) - 400000000)
