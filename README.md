@@ -23,7 +23,7 @@
 
   ```sql
   # [mariadb]
-  SET SESSION query_cache_type=0;
+  SET SESSION query_cache_type=0; # only in current session
   ```
 
   ```xml
@@ -31,6 +31,10 @@
   [mysqld]
   query_cache_type = 0
   query_cache_size = 0
+  # disable innoDB cache
+  innodb_buffer_pool_size = 5M
+  innodb_adaptive_hash_index = 0
+  innodb_change_buffering = none
   
   # ClickHouse
   <clickhouse>
@@ -64,7 +68,9 @@ clickhouse-mysql --src-server-id 1 --migrate-table --src-wait --nice-pause 1 --s
 
 - `ilike`:  for searching simple words (same as `like`) but case-insensitive.
 
-- `multiIf(cond_1, then_1, cond_2, then_2,...)`: alternative for `case when`
+- `multiIf(cond_1, then_1, cond_2, then_2,...)`: alternative for `case when` , better performance in ClickHouse
+
+- `sumIf(column, cond)`, `countIf(cond)`, `avgIf(x, cond)`, `quantilesTimingIf(level1, level2)(x, cond)`, `argMinIf(arg, val, cond)`: The suffix -If can be appended to the name of any aggregate function.
 
 - `has(array, value)`: Checks if an array contains a specific value
 
@@ -86,19 +92,70 @@ clickhouse-mysql --src-server-id 1 --migrate-table --src-wait --nice-pause 1 --s
 
 ```sql
 # SLA report query
-SET @tmp:= -1;
-SELECT COALESCE(SUM(CASE WHEN t1.state = 0 THEN t1.duration end), 0) as OK, COALESCE(SUM(CASE WHEN t1.state = 1 THEN t1.duration end), 0) as WARNING, COALESCE(SUM(CASE WHEN t1.state = 2 THEN t1.duration end), 0) as CRITICAL, COALESCE(SUM(CASE WHEN t1.state = 3 THEN t1.duration end), 0) as UNKNOWN FROM ( SELECT state, if(@tmp = -1,0, -UNIX_TIMESTAMP(state_time) + @tmp) as 'duration',         @tmp:=UNIX_TIMESTAMP(state_time) as dummy FROM icinga_statehistory WHERE object_id='203680' and state_time >= '2024-11-15 03:23:42' and state_time <= '2024-11-17 04:23:42'        order by state_time desc) AS t1;
+SET @tmp:= -1; SELECT COALESCE(SUM(CASE WHEN t1.state = 0 THEN t1.duration end), 0) as OK, COALESCE(SUM(CASE WHEN t1.state = 1 THEN t1.duration end), 0) as WARNING, COALESCE(SUM(CASE WHEN t1.state = 2 THEN t1.duration end), 0) as CRITICAL, COALESCE(SUM(CASE WHEN t1.state = 3 THEN t1.duration end), 0) as UNKNOWN FROM ( SELECT state, if(@tmp = -1,0, -UNIX_TIMESTAMP(state_time) + @tmp) as 'duration',         @tmp:=UNIX_TIMESTAMP(state_time) as dummy FROM icinga_statehistory WHERE object_id='203680' and state_time >= '2024-11-15 03:23:42' and state_time <= '2024-11-17 04:23:42'        order by state_time desc) AS t1;
 ```
 
 ```sql
 # SLA report query ClickHouse
-SELECT COALESCE(SUM(CASE WHEN t1.state = 0 THEN t1.duration end), 0) as OK, COALESCE(SUM(CASE WHEN t1.state = 1 THEN t1.duration end), 0) as WARNING, COALESCE(SUM(CASE WHEN t1.state = 2 THEN t1.duration end), 0) as CRITICAL, COALESCE(SUM(CASE WHEN t1.state = 3 THEN t1.duration end), 0) as UNKNOWN FROM (SELECT state, if(dummy = 0,0, -toUnixTimestamp(state_time) + dummy) as duration, lagInFrame(toUnixTimestamp(state_time), 1, 0) OVER (ORDER BY state_time DESC ROWS BETWEEN 1 PRECEDING AND 1 PRECEDING) as dummy FROM icinga_statehistory WHERE object_id='203680' and state_time >= '2024-11-15 03:23:42' and state_time <= '2024-11-17 04:23:42'
-    order by state_time desc) AS t1;
+SELECT
+    sumIf(duration, state = 0) AS OK,
+    sumIf(duration, state = 1) AS WARNING,
+    sumIf(duration, state = 2) AS CRITICAL,
+    sumIf(duration, state = 3) AS UNKNOWN
+FROM
+(
+    SELECT
+        state,
+        if(dummy = 0, 0, dummy - toUnixTimestamp(state_time)) AS duration,
+        lagInFrame(toUnixTimestamp(state_time), 1, 0) OVER (ORDER BY state_time DESC ROWS BETWEEN 1 PRECEDING AND 1 PRECEDING) AS dummy
+    FROM icinga_statehistory
+    WHERE (object_id = '203680') AND ((state_time >= '2024-11-15 03:23:42') AND (state_time <= '2024-11-17 04:23:42'))
+) AS t1
 ```
 
 ![image-20250306173413526](./README.assets/image-20250306173413526.png)
 
 ![image-20250306173303253](./README.assets/image-20250306173303253.png)
+
+
+
+ClickHouse: Modify table creation (change primary key to ORDER BY (object_id, state_time) )
+
+![image-20250311113258267](./README.assets/image-20250311113258267.png)
+
+
+
+Change `object_id` to another one has more amount of state:
+
+```mariadb
+SET @tmp:= -1; SELECT COALESCE(SUM(CASE WHEN t1.state = 0 THEN t1.duration end), 0) as OK, COALESCE(SUM(CASE WHEN t1.state = 1 THEN t1.duration end), 0) as WARNING, COALESCE(SUM(CASE WHEN t1.state = 2 THEN t1.duration end), 0) as CRITICAL, COALESCE(SUM(CASE
+WHEN t1.state = 3 THEN t1.duration end), 0) as UNKNOWN FROM ( SELECT
+state, if(@tmp = -1,0, -UNIX_TIMESTAMP(state_time) + @tmp) as 'duration',         @tmp:=UNIX_TIMESTAMP(state_time) as dummy FROM icinga_statehistory WHERE object_id='45433' and state_time >= '2024-11-15 03:23:42' and state_time <= '2024-11-17 04:23:42'        order by state_time desc) AS t1;
+```
+
+```mysql
+# ClickHouse
+SELECT
+    sumIf(duration, state = 0) AS OK,
+    sumIf(duration, state = 1) AS WARNING,
+    sumIf(duration, state = 2) AS CRITICAL,
+    sumIf(duration, state = 3) AS UNKNOWN
+FROM
+(
+    SELECT
+        state,
+        if(dummy = 0, 0, dummy - toUnixTimestamp(state_time)) AS duration,
+        lagInFrame(toUnixTimestamp(state_time), 1, 0) OVER (ORDER BY state_time DESC ROWS BETWEEN 1 PRECEDING AND 1 PRECEDING) AS dummy
+    FROM icinga_statehistory
+    WHERE (object_id = '45433') AND ((state_time >= '2024-11-15 03:23:42') AND (state_time <= '2024-11-17 04:23:42'))
+) AS t1
+```
+
+![image-20250311134317607](./README.assets/image-20250311134317607.png)
+
+Compare number of state between 2 object_ids:
+
+![image-20250311114418530](./README.assets/image-20250311114418530.png)
 
 
 
@@ -254,6 +311,122 @@ ORDER BY n.start_time DESC;
 
 
 
+Change table `icinga_notifications` primary key to `ORDER BY (object_id, start_time, notification_id)` and oh.name1 filter :
+
+```sql
+# MariaDB
+    # Notification History
+    SELECT
+      n.start_time as Time,
+      oc.name1 as Contact,
+      oh.name1 as Host,
+    CASE
+      WHEN n.notification_reason = 0 THEN
+      CASE
+          WHEN n.state = 0 THEN 'RECOVERY'
+          WHEN n.state = 1 THEN 'DOWN'
+          WHEN n.state = 2 THEN 'UNREACHABLE'
+          ELSE n.state
+      END
+      WHEN n.notification_reason = 1 THEN
+      CASE
+        WHEN n.state = 1 THEN 'ACKNOWLEDGEMENT (DOWN)'
+        WHEN n.state = 2 THEN 'ACKNOWLEDGEMENT (UNREACHABLE)'
+      END
+      WHEN n.notification_reason = 2 THEN
+      CASE
+        WHEN n.state = 0 THEN 'FLAPPINGSTART (UP)'
+        WHEN n.state = 1 THEN 'FLAPPINGSTART (DOWN)'
+        WHEN n.state = 2 THEN 'FLAPPINGSTART (UNREACHABLE)'
+      END
+      WHEN n.notification_reason = 3 THEN
+      CASE
+        WHEN n.state = 0 THEN 'FLAPPINGSTOP (UP)'
+        WHEN n.state = 1 THEN 'FLAPPINGSTOP (DOWN)'
+        WHEN n.state = 2 THEN 'FLAPPINGSTOP (UNREACHABLE)'
+      END
+      WHEN n.notification_reason = 5 THEN
+      CASE
+        WHEN n.state = 0 THEN 'DOWNTIMESTART (UP)'
+        WHEN n.state = 1 THEN 'DOWNTIMESTART (DOWN)'
+        WHEN n.state = 2 THEN 'DOWNTIMESTART (UNREACHABLE)'
+      END
+      WHEN n.notification_reason = 6 OR n.notification_reason = 7 THEN
+      CASE
+        WHEN n.state = 0 THEN 'DOWNTIMEEND (UP)'
+        WHEN n.state = 1 THEN 'DOWNTIMEEND (DOWN)'
+        WHEN n.state = 2 THEN 'DOWNTIMEEND (UNREACHABLE)'
+      END
+      WHEN n.notification_reason = 99 THEN
+      CASE
+        WHEN n.state = 0 THEN 'CUSTOM (UP)'
+        WHEN n.state = 1 THEN 'CUSTOM (DOWN)'
+        WHEN n.state = 2 THEN 'CUSTOM (UNREACHABLE)'
+      END
+    END AS Type,
+      occ.name1 AS Notification_Command,
+      n.output AS Infomation
+    FROM
+    icinga_contactnotifications c
+    JOIN icinga_notifications n ON c.instance_id = n.instance_id AND c.notification_id = n.notification_id
+    JOIN icinga_objects oc ON c.contact_object_id = oc.object_id
+    JOIN icinga_objects oh ON n.object_id = oh.object_id
+    LEFT JOIN icinga_contactnotificationmethods cn ON cn.contactnotification_id = c.contactnotification_id
+    LEFT JOIN icinga_objects occ ON cn.command_object_id = occ.object_id
+    WHERE n.start_time BETWEEN '2023-11-15' AND '2025-12-15' AND oh.objecttype_id = 1 AND oh.name1 in ('ME-CSR-HNI-C119.5---HN_HBT_CHUA_VUA','ME-CSR-HNI-C173.2---H2_MLH_YEN_NHAN','ME-CSR-HNI-C59.3---HN_DDA_NGO_CHIEN_THANG','ME-CSR-HNI-C85.9---HN_NTL_MY_DINH_1','ME-CSR-HNI-C119.5---HN_HBT_CHUA_VUA','ME-CSR-HNI-C39.2---HN_HKM_BA_TRIEU','ME-CSR-HNI-C25.6---HN_HBT_NGUYEN_KHOAI','ME-CSR-HNI-C118.4---HN_HBT_VTC_LAC_TRUNG_TOWER_IBC','ME-CSR-HNI-C5.5---HN_DDA_KHUONG_THUONG','ME-CSR-HNI-C85.9---HN_NTL_MY_DINH_1','ME-CSR-HNI-C39.2---HN_HKM_BA_TRIEU','ME-CSR-HNI-C5.5---HN_DDA_KHUONG_THUONG','ME-CSR-HNI-C25.6---HN_HBT_NGUYEN_KHOAI','ME-CSR-HNI-C118.4---HN_HBT_VTC_LAC_TRUNG_TOWER_IBC','ME-CSR-HNI-C173.2---H2_MLH_YEN_NHAN')
+    AND n.notification_id > ((select max(notification_id) from icinga_notifications) - 400000000)
+    ORDER BY n.start_time desc;
+```
+
+```sql
+ # ClickHouse
+ SELECT
+  n.start_time AS Time,
+  oc.name1 AS Contact,
+  oh.name1 AS Host,
+  multiIf(
+    n.notification_reason = 0 AND n.state = 0, 'RECOVERY',
+    n.notification_reason = 0 AND n.state = 1, 'DOWN',
+    n.notification_reason = 0 AND n.state = 2, 'UNREACHABLE',
+    n.notification_reason = 1 AND n.state = 1, 'ACKNOWLEDGEMENT (DOWN)',
+    n.notification_reason = 1 AND n.state = 2, 'ACKNOWLEDGEMENT (UNREACHABLE)',
+    n.notification_reason = 2 AND n.state = 0, 'FLAPPINGSTART (UP)',
+    n.notification_reason = 2 AND n.state = 1, 'FLAPPINGSTART (DOWN)',
+    n.notification_reason = 2 AND n.state = 2, 'FLAPPINGSTART (UNREACHABLE)',
+    n.notification_reason = 3 AND n.state = 0, 'FLAPPINGSTOP (UP)',
+    n.notification_reason = 3 AND n.state = 1, 'FLAPPINGSTOP (DOWN)',
+    n.notification_reason = 3 AND n.state = 2, 'FLAPPINGSTOP (UNREACHABLE)',
+    n.notification_reason = 5 AND n.state = 0, 'DOWNTIMESTART (UP)',
+    n.notification_reason = 5 AND n.state = 1, 'DOWNTIMESTART (DOWN)',
+    n.notification_reason = 5 AND n.state = 2, 'DOWNTIMESTART (UNREACHABLE)',
+    (n.notification_reason = 6 OR n.notification_reason = 7) AND n.state = 0, 'DOWNTIMEEND (UP)',
+    (n.notification_reason = 6 OR n.notification_reason = 7) AND n.state = 1, 'DOWNTIMEEND (DOWN)',
+    (n.notification_reason = 6 OR n.notification_reason = 7) AND n.state = 2, 'DOWNTIMEEND (UNREACHABLE)',
+    n.notification_reason = 99 AND n.state = 0, 'CUSTOM (UP)',
+    n.notification_reason = 99 AND n.state = 1, 'CUSTOM (DOWN)',
+    n.notification_reason = 99 AND n.state = 2, 'CUSTOM (UNREACHABLE)',
+    ''
+  ) AS Type,
+  occ.name1 AS Notification_Command,
+  n.output AS Information
+FROM
+  icinga_notifications n
+JOIN icinga_contactnotifications c ON c.instance_id = n.instance_id AND c.notification_id = n.notification_id
+JOIN icinga_objects oc ON c.contact_object_id = oc.object_id
+JOIN icinga_objects oh ON n.object_id = oh.object_id
+LEFT JOIN icinga_contactnotificationmethods cn ON cn.contactnotification_id = c.contactnotification_id
+LEFT JOIN icinga_objects occ ON cn.command_object_id = occ.object_id
+WHERE
+  n.start_time >= '2023-11-15' AND n.start_time <= '2025-12-15'
+  AND oh.objecttype_id = 1
+  AND oh.name1 IN ('ME-CSR-HNI-C119.5---HN_HBT_CHUA_VUA','ME-CSR-HNI-C173.2---H2_MLH_YEN_NHAN','ME-CSR-HNI-C59.3---HN_DDA_NGO_CHIEN_THANG','ME-CSR-HNI-C85.9---HN_NTL_MY_DINH_1','ME-CSR-HNI-C119.5---HN_HBT_CHUA_VUA','ME-CSR-HNI-C39.2---HN_HKM_BA_TRIEU','ME-CSR-HNI-C25.6---HN_HBT_NGUYEN_KHOAI','ME-CSR-HNI-C118.4---HN_HBT_VTC_LAC_TRUNG_TOWER_IBC','ME-CSR-HNI-C5.5---HN_DDA_KHUONG_THUONG','ME-CSR-HNI-C85.9---HN_NTL_MY_DINH_1','ME-CSR-HNI-C39.2---HN_HKM_BA_TRIEU','ME-CSR-HNI-C5.5---HN_DDA_KHUONG_THUONG','ME-CSR-HNI-C25.6---HN_HBT_NGUYEN_KHOAI','ME-CSR-HNI-C118.4---HN_HBT_VTC_LAC_TRUNG_TOWER_IBC','ME-CSR-HNI-C173.2---H2_MLH_YEN_NHAN')
+ORDER BY n.start_time DESC;
+```
+
+![image-20250311152720018](./README.assets/image-20250311152720018.png)
+
+
+
 3. Alert History - Host
 
 ```sql
@@ -261,7 +434,7 @@ ORDER BY n.start_time DESC;
 SELECT    state_time as Time,   t4.name1 as Host,   t1.state AS State,   t1.state_type AS statetype,   t1.output as Description,   t1.check_source as Check_Source FROM icinga_statehistory t1 INNER JOIN icinga_hostgroup_members t2 on t1.object_id = t2.host_object_id INNER JOIN icinga_hostgroups t3 on t2.hostgroup_id = t3.hostgroup_id INNER JOIN icinga_objects t4 ON t1.object_id = t4.object_id WHERE t3.alias IN ('DBB_HPG', 'HNI') AND state_time >= '2023-11-15' AND state_time <= '2024-12-15';
 ```
 
-![image-20250307134637316](./README.assets/image-20250307134637316.png)
+![image-20250311154916867](./README.assets/image-20250311154916867.png)
 
 ![image-20250307134717965](./README.assets/image-20250307134717965.png)
 
@@ -269,9 +442,7 @@ SELECT    state_time as Time,   t4.name1 as Host,   t1.state AS State,   t1.stat
 
 ![image-20250307134833972](./README.assets/image-20250307134833972.png)
 
-![image-20250307134033969](./README.assets/image-20250307134033969.png)
-
-
+![image-20250311154637334](./README.assets/image-20250311154637334.png)
 
 4. Alert History - Service
 
