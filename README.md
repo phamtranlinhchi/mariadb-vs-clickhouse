@@ -64,6 +64,8 @@ clickhouse-mysql --src-server-id 1 --migrate-table --src-wait --nice-pause 1 --s
 
 - `ilike`:  for searching simple words (same as `like`) but case-insensitive.
 
+- `multiIf(cond_1, then_1, cond_2, then_2,...)`: alternative for `case when`
+
 - `has(array, value)`: Checks if an array contains a specific value
 
 - `indexOf(array, value)`: Finds the index (1-based) of a value in an array
@@ -103,68 +105,68 @@ SELECT COALESCE(SUM(CASE WHEN t1.state = 0 THEN t1.duration end), 0) as OK, COAL
 2. Notification History
 
 ```sql
-# Notification History
-SELECT
-  n.start_time as Time,
-  oc.name1 as Contact,
-  oh.name1 as Host,
-CASE
-  WHEN n.notification_reason = 0 THEN
-  CASE
-      WHEN n.state = 0 THEN 'RECOVERY'
-      WHEN n.state = 1 THEN 'DOWN'
-      WHEN n.state = 2 THEN 'UNREACHABLE'
-      ELSE n.state
-  END
-  WHEN n.notification_reason = 1 THEN
-  CASE
-    WHEN n.state = 1 THEN 'ACKNOWLEDGEMENT (DOWN)'
-    WHEN n.state = 2 THEN 'ACKNOWLEDGEMENT (UNREACHABLE)'
-  END
-  WHEN n.notification_reason = 2 THEN
-  CASE
-    WHEN n.state = 0 THEN 'FLAPPINGSTART (UP)'
-    WHEN n.state = 1 THEN 'FLAPPINGSTART (DOWN)'
-    WHEN n.state = 2 THEN 'FLAPPINGSTART (UNREACHABLE)'
-  END
-  WHEN n.notification_reason = 3 THEN
-  CASE
-    WHEN n.state = 0 THEN 'FLAPPINGSTOP (UP)'
-    WHEN n.state = 1 THEN 'FLAPPINGSTOP (DOWN)'
-    WHEN n.state = 2 THEN 'FLAPPINGSTOP (UNREACHABLE)'
-  END
-  WHEN n.notification_reason = 5 THEN
-  CASE
-    WHEN n.state = 0 THEN 'DOWNTIMESTART (UP)'
-    WHEN n.state = 1 THEN 'DOWNTIMESTART (DOWN)'
-    WHEN n.state = 2 THEN 'DOWNTIMESTART (UNREACHABLE)'
-  END
-  WHEN n.notification_reason = 6 OR n.notification_reason = 7 THEN
-  CASE
-    WHEN n.state = 0 THEN 'DOWNTIMEEND (UP)'
-    WHEN n.state = 1 THEN 'DOWNTIMEEND (DOWN)'
-    WHEN n.state = 2 THEN 'DOWNTIMEEND (UNREACHABLE)'
-  END
-  WHEN n.notification_reason = 99 THEN
-  CASE
-    WHEN n.state = 0 THEN 'CUSTOM (UP)'
-    WHEN n.state = 1 THEN 'CUSTOM (DOWN)'
-    WHEN n.state = 2 THEN 'CUSTOM (UNREACHABLE)'
-  END
-END AS Type,
-  occ.name1 AS Notification_Command,
-  n.output AS Infomation
+    # Notification History
+    SELECT
+      n.start_time as Time,
+      oc.name1 as Contact,
+      oh.name1 as Host,
+    CASE
+      WHEN n.notification_reason = 0 THEN
+      CASE
+          WHEN n.state = 0 THEN 'RECOVERY'
+          WHEN n.state = 1 THEN 'DOWN'
+          WHEN n.state = 2 THEN 'UNREACHABLE'
+          ELSE n.state
+      END
+      WHEN n.notification_reason = 1 THEN
+      CASE
+        WHEN n.state = 1 THEN 'ACKNOWLEDGEMENT (DOWN)'
+        WHEN n.state = 2 THEN 'ACKNOWLEDGEMENT (UNREACHABLE)'
+      END
+      WHEN n.notification_reason = 2 THEN
+      CASE
+        WHEN n.state = 0 THEN 'FLAPPINGSTART (UP)'
+        WHEN n.state = 1 THEN 'FLAPPINGSTART (DOWN)'
+        WHEN n.state = 2 THEN 'FLAPPINGSTART (UNREACHABLE)'
+      END
+      WHEN n.notification_reason = 3 THEN
+      CASE
+        WHEN n.state = 0 THEN 'FLAPPINGSTOP (UP)'
+        WHEN n.state = 1 THEN 'FLAPPINGSTOP (DOWN)'
+        WHEN n.state = 2 THEN 'FLAPPINGSTOP (UNREACHABLE)'
+      END
+      WHEN n.notification_reason = 5 THEN
+      CASE
+        WHEN n.state = 0 THEN 'DOWNTIMESTART (UP)'
+        WHEN n.state = 1 THEN 'DOWNTIMESTART (DOWN)'
+        WHEN n.state = 2 THEN 'DOWNTIMESTART (UNREACHABLE)'
+      END
+      WHEN n.notification_reason = 6 OR n.notification_reason = 7 THEN
+      CASE
+        WHEN n.state = 0 THEN 'DOWNTIMEEND (UP)'
+        WHEN n.state = 1 THEN 'DOWNTIMEEND (DOWN)'
+        WHEN n.state = 2 THEN 'DOWNTIMEEND (UNREACHABLE)'
+      END
+      WHEN n.notification_reason = 99 THEN
+      CASE
+        WHEN n.state = 0 THEN 'CUSTOM (UP)'
+        WHEN n.state = 1 THEN 'CUSTOM (DOWN)'
+        WHEN n.state = 2 THEN 'CUSTOM (UNREACHABLE)'
+      END
+    END AS Type,
+      occ.name1 AS Notification_Command,
+      n.output AS Infomation
 
-FROM
-icinga_contactnotifications c
-JOIN icinga_notifications n ON c.instance_id = n.instance_id AND c.notification_id = n.notification_id
-JOIN icinga_objects oc ON c.contact_object_id = oc.object_id
-JOIN icinga_objects oh ON n.object_id = oh.object_id
-LEFT JOIN icinga_contactnotificationmethods cn ON cn.contactnotification_id = c.contactnotification_id
-LEFT JOIN icinga_objects occ ON cn.command_object_id = occ.object_id
-WHERE n.start_time BETWEEN '2023-11-15' AND '2024-12-15' AND oh.objecttype_id = 1 AND oh.name1 in ('CSG-NDH_NDH_KCN_HOA_XA','CSG-QNH_DTU_YEN_THO_2','CSG-QNH_DTU_MAO_KHE_3','CSG-HDG_THA_THANH_HAI','CSG-QNH_DTU_VIET_DAN_2','CSG-TH_TGA_MAI_LAM_4','CSG-HDG_KMN_LONG_XUYEN_2','ME-CSR-HNI-C69.1---HN_BDH_04_LANG_HA','ME-CSR-HNI-C136.3---HN_BDH_BAO_TANG_B52','ME-CSR-HNI-C61.4---HN_DDA_LINH_QUANG','ME-CSR-HNI-C173.2---H2_MLH_YEN_NHAN','ME-CSR-HNI-C122.5---HN_DDA_PHAO_DAI_LANG')
-AND n.notification_id > ((select max(notification_id) from icinga_notifications) - 400000000)
-ORDER BY n.start_time desc;
+    FROM
+    icinga_contactnotifications c
+    JOIN icinga_notifications n ON c.instance_id = n.instance_id AND c.notification_id = n.notification_id
+    JOIN icinga_objects oc ON c.contact_object_id = oc.object_id
+    JOIN icinga_objects oh ON n.object_id = oh.object_id
+    LEFT JOIN icinga_contactnotificationmethods cn ON cn.contactnotification_id = c.contactnotification_id
+    LEFT JOIN icinga_objects occ ON cn.command_object_id = occ.object_id
+    WHERE n.start_time BETWEEN '2023-11-15' AND '2024-12-15' AND oh.objecttype_id = 1 AND oh.name1 in ('CSG-NDH_NDH_KCN_HOA_XA','CSG-QNH_DTU_YEN_THO_2','CSG-QNH_DTU_MAO_KHE_3','CSG-HDG_THA_THANH_HAI','CSG-QNH_DTU_VIET_DAN_2','CSG-TH_TGA_MAI_LAM_4','CSG-HDG_KMN_LONG_XUYEN_2','ME-CSR-HNI-C69.1---HN_BDH_04_LANG_HA','ME-CSR-HNI-C136.3---HN_BDH_BAO_TANG_B52','ME-CSR-HNI-C61.4---HN_DDA_LINH_QUANG','ME-CSR-HNI-C173.2---H2_MLH_YEN_NHAN','ME-CSR-HNI-C122.5---HN_DDA_PHAO_DAI_LANG')
+    AND n.notification_id > ((select max(notification_id) from icinga_notifications) - 400000000)
+    ORDER BY n.start_time desc;
 ```
 
 ```sql
