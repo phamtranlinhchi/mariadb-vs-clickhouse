@@ -88,6 +88,10 @@ clickhouse-mysql --src-server-id 1 --migrate-table --src-wait --nice-pause 1 --s
 
 #### 3. Testing
 
+**SUMMARY:** 3/4 below queries ClickHouse performance is better then MariaDB, the 2nd query with JOIN is the only one MariaDB win.
+
+ 
+
 1. SLA report query
 
 ```sql
