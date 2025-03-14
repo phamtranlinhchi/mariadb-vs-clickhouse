@@ -90,6 +90,16 @@ clickhouse-mysql --src-server-id 1 --migrate-table --src-wait --nice-pause 1 --s
 
 **SUMMARY:** 3/4 below queries ClickHouse performance is better then MariaDB, the 2nd query with JOIN is the only one MariaDB win.
 
+|                                            | MariaDB             | ClickHouse                      |
+| ------------------------------------------ | ------------------- | ------------------------------- |
+| SLA Report - object_id with less data      | **0.004s**          | 0.007s                          |
+| SLA Report - object_id with more data      | 0.014s              | **0.010s**                      |
+| Notification History                       | **0.025s**          | 1.125s (need JOIN optimization) |
+| Alert History - Host                       | 0.198s              | **0.113s**                      |
+| Alert History - Host with order by Time    | 0.173s              | **0.097s**                      |
+| Alert History - Service                    | 9.197s              | **0.119s**                      |
+| Alert History - Service with order by Time | 13m (1st), 2m (2nd) | **0.501s**                      |
+
  
 
 1. SLA report query
@@ -468,8 +478,5 @@ SELECT    state_time as Time,   t2.display_name as Host,   t3.display_name as Se
 Add order by Time desc
 
 ![image-20250314161940980](./README.assets/image-20250314161940980.png)
-
-
-
 
 
