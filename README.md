@@ -377,7 +377,7 @@ Change table `icinga_notifications` primary key to `ORDER BY (object_id, start_t
     JOIN icinga_objects oh ON n.object_id = oh.object_id
     LEFT JOIN icinga_contactnotificationmethods cn ON cn.contactnotification_id = c.contactnotification_id
     LEFT JOIN icinga_objects occ ON cn.command_object_id = occ.object_id
-    WHERE n.start_time BETWEEN '2023-11-15' AND '2025-12-15' AND oh.objecttype_id = 1 AND oh.name1 in ('ME-CSR-HNI-C119.5---HN_HBT_CHUA_VUA','ME-CSR-HNI-C173.2---H2_MLH_YEN_NHAN','ME-CSR-HNI-C59.3---HN_DDA_NGO_CHIEN_THANG','ME-CSR-HNI-C85.9---HN_NTL_MY_DINH_1','ME-CSR-HNI-C119.5---HN_HBT_CHUA_VUA','ME-CSR-HNI-C39.2---HN_HKM_BA_TRIEU','ME-CSR-HNI-C25.6---HN_HBT_NGUYEN_KHOAI','ME-CSR-HNI-C118.4---HN_HBT_VTC_LAC_TRUNG_TOWER_IBC','ME-CSR-HNI-C5.5---HN_DDA_KHUONG_THUONG','ME-CSR-HNI-C85.9---HN_NTL_MY_DINH_1','ME-CSR-HNI-C39.2---HN_HKM_BA_TRIEU','ME-CSR-HNI-C5.5---HN_DDA_KHUONG_THUONG','ME-CSR-HNI-C25.6---HN_HBT_NGUYEN_KHOAI','ME-CSR-HNI-C118.4---HN_HBT_VTC_LAC_TRUNG_TOWER_IBC','ME-CSR-HNI-C173.2---H2_MLH_YEN_NHAN')
+    WHERE n.start_time BETWEEN '2023-11-15' AND '2025-12-15' AND oh.objecttype_id = 1 AND oh.name1 in ('ME-CSR-HNI-C119.5---HN_HBT_CHUA_VUA','ME-CSR-HNI-C173.2---H2_MLH_YEN_NHAN','ME-CSR-HNI-C59.3---HN_DDA_NGO_CHIEN_THANG','ME-CSR-HNI-C85.9---HN_NTL_MY_DINH_1','ME-CSR-HNI-C39.2---HN_HKM_BA_TRIEU','ME-CSR-HNI-C25.6---HN_HBT_NGUYEN_KHOAI','ME-CSR-HNI-C118.4---HN_HBT_VTC_LAC_TRUNG_TOWER_IBC','ME-CSR-HNI-C5.5---HN_DDA_KHUONG_THUONG')
     AND n.notification_id > ((select max(notification_id) from icinga_notifications) - 400000000)
     ORDER BY n.start_time desc;
 ```
@@ -423,7 +423,7 @@ LEFT JOIN icinga_objects occ ON cn.command_object_id = occ.object_id
 WHERE
   n.start_time >= '2023-11-15' AND n.start_time <= '2025-12-15'
   AND oh.objecttype_id = 1
-  AND oh.name1 IN ('ME-CSR-HNI-C119.5---HN_HBT_CHUA_VUA','ME-CSR-HNI-C173.2---H2_MLH_YEN_NHAN','ME-CSR-HNI-C59.3---HN_DDA_NGO_CHIEN_THANG','ME-CSR-HNI-C85.9---HN_NTL_MY_DINH_1','ME-CSR-HNI-C119.5---HN_HBT_CHUA_VUA','ME-CSR-HNI-C39.2---HN_HKM_BA_TRIEU','ME-CSR-HNI-C25.6---HN_HBT_NGUYEN_KHOAI','ME-CSR-HNI-C118.4---HN_HBT_VTC_LAC_TRUNG_TOWER_IBC','ME-CSR-HNI-C5.5---HN_DDA_KHUONG_THUONG','ME-CSR-HNI-C85.9---HN_NTL_MY_DINH_1','ME-CSR-HNI-C39.2---HN_HKM_BA_TRIEU','ME-CSR-HNI-C5.5---HN_DDA_KHUONG_THUONG','ME-CSR-HNI-C25.6---HN_HBT_NGUYEN_KHOAI','ME-CSR-HNI-C118.4---HN_HBT_VTC_LAC_TRUNG_TOWER_IBC','ME-CSR-HNI-C173.2---H2_MLH_YEN_NHAN')
+  AND oh.name1 IN ('ME-CSR-HNI-C119.5---HN_HBT_CHUA_VUA','ME-CSR-HNI-C173.2---H2_MLH_YEN_NHAN','ME-CSR-HNI-C59.3---HN_DDA_NGO_CHIEN_THANG','ME-CSR-HNI-C85.9---HN_NTL_MY_DINH_1','ME-CSR-HNI-C39.2---HN_HKM_BA_TRIEU','ME-CSR-HNI-C25.6---HN_HBT_NGUYEN_KHOAI','ME-CSR-HNI-C118.4---HN_HBT_VTC_LAC_TRUNG_TOWER_IBC','ME-CSR-HNI-C5.5---HN_DDA_KHUONG_THUONG')
 ORDER BY n.start_time DESC;
 ```
 
@@ -446,7 +446,13 @@ SELECT    state_time as Time,   t4.name1 as Host,   t1.state AS State,   t1.stat
 
 ![image-20250307134833972](./README.assets/image-20250307134833972.png)
 
-![image-20250311154637334](./README.assets/image-20250311154637334.png)
+![image-20250314164806093](./README.assets/image-20250314164806093.png)
+
+Add order by Time desc
+
+![image-20250314164947322](./README.assets/image-20250314164947322.png)
+
+
 
 4. Alert History - Service
 
@@ -459,7 +465,9 @@ SELECT    state_time as Time,   t2.display_name as Host,   t3.display_name as Se
 
 
 
+Add order by Time desc
 
+![image-20250314161940980](./README.assets/image-20250314161940980.png)
 
 
 
