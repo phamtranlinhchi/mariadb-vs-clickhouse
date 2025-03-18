@@ -95,15 +95,19 @@ clickhouse-mysql --src-server-id 1 --migrate-table --src-wait --nice-pause 1 --s
 
 **SUMMARY:** 3/4 below queries ClickHouse performance is better then MariaDB, the 2nd query with JOIN is the only one MariaDB win.
 
-|                                            | MariaDB             | ClickHouse                      |
-| ------------------------------------------ | ------------------- | ------------------------------- |
-| SLA Report - object_id with less data      | **0.004s**          | 0.007s                          |
-| SLA Report - object_id with more data      | 0.014s              | **0.010s**                      |
-| Notification History                       | **0.025s**          | 1.125s (need JOIN optimization) |
-| Alert History - Host                       | 0.198s              | **0.113s**                      |
-| Alert History - Host with order by Time    | 0.173s              | **0.097s**                      |
-| Alert History - Service                    | 9.197s              | **0.119s**                      |
-| Alert History - Service with order by Time | 13m (1st), 2m (2nd) | **0.501s**                      |
+| Queries                                                      | Filters                                                      | MariaDB | ClickHouse |
+| ------------------------------------------------------------ | ------------------------------------------------------------ | ------- | ---------- |
+| **SLA Report**<br />Table:`icinga_statehistory`<br />(3,276,715 rows) | `object_id`: 203680 & `state_time` in 2 months <br />(4247 rows) | 0.184s  | **0.010s** |
+|                                                              | `object_id`: 203680 & `state_time` in 5 months<br />(4334 rows) | 0.173s  | **0.012s** |
+|                                                              | `object_id`: 60747 & `state_time` in 2 months <br />(28,776 rows) | 0.878s  | **0.012s** |
+|                                                              | `object_id`: 60747 & `state_time` in 5 months <br />(67,996 rows) | 2.004s  | **0.019s** |
+| **Notification History**<br />(1,098,325 rows)               |                                                              |         |            |
+| **Alert History - Host**<br />(19,349 rows)                  | `alias` in ('DBB_HPG', 'HNI') & `state_time` in 1 year<br />(1070 rows) | 0.193s  | **0.102**  |
+|                                                              | `alias` IN ('DBB_HPG', 'HNI') & `state_time` in 1 year<br />(1070 rows)<br />order by Time | 0.164s  | **0.097s** |
+| **Alert History - Service**<br />(8,507,148 rows)            | `alias` in ('DBB_HPG', 'HNI') & `state_time` in 1 year<br />(474,338 rows) | 2m46.4s | **0.421s** |
+|                                                              | `alias` in ('DBB_HPG', 'HNI') & `state_time` in 1 year<br /> order by `Time`<br />(474,338 rows) | 2m48.5s | **0.584s** |
+|                                                              | `alias` in ('DBB_HPG', 'HNI') & `state_time` in 1 year<br /> limit 50000<br />(50,000 rows) | 11.021s | **0.102s** |
+|                                                              | `alias` in ('DBB_HPG', 'HNI') & `state_time` in 1 year<br />order by `Time`<br />limit 50000<br />(50,000 rows) | 2m46.9s | **0.375s** |
 
 
 
@@ -426,9 +430,25 @@ SELECT    state_time as Time,   t2.display_name as Host,   t3.display_name as Se
 
 ![image-20250318105503184](./README.assets/image-20250318105503184.png)
 
+
+
 Add order by Time desc
 
 ![image-20250318111148547](./README.assets/image-20250318111148547.png)
+
+
+
+Without limit 50000:
+
+![image-20250318171141890](./README.assets/image-20250318171141890.png)
+
+
+
+Without limit 50000 and order by Time:
+
+![image-20250318171602465](./README.assets/image-20250318171602465.png)
+
+
 
 Total rows:
 
