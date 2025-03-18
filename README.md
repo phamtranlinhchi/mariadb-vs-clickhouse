@@ -93,21 +93,21 @@ clickhouse-mysql --src-server-id 1 --migrate-table --src-wait --nice-pause 1 --s
 
 #### 3. Testing
 
-**SUMMARY:** 3/4 below queries ClickHouse performance is better then MariaDB, the 2nd query with JOIN is the only one MariaDB win.
+**SUMMARY** (below queries has been disabled cache but the OS cache is still remain)
 
-| Queries                                                      | Filters                                                      | MariaDB | ClickHouse |
-| ------------------------------------------------------------ | ------------------------------------------------------------ | ------- | ---------- |
-| **SLA Report**<br />Table:`icinga_statehistory`<br />(3,276,715 rows) | `object_id`: 203680 & `state_time` in 2 months <br />(4247 rows) | 0.184s  | **0.010s** |
-|                                                              | `object_id`: 203680 & `state_time` in 5 months<br />(4334 rows) | 0.173s  | **0.012s** |
-|                                                              | `object_id`: 60747 & `state_time` in 2 months <br />(28,776 rows) | 0.878s  | **0.012s** |
-|                                                              | `object_id`: 60747 & `state_time` in 5 months <br />(67,996 rows) | 2.004s  | **0.019s** |
-| **Notification History**<br />(1,098,325 rows)               |                                                              |         |            |
-| **Alert History - Host**<br />(19,349 rows)                  | `alias` in ('DBB_HPG', 'HNI') & `state_time` in 1 year<br />(1070 rows) | 0.193s  | **0.102**  |
-|                                                              | `alias` IN ('DBB_HPG', 'HNI') & `state_time` in 1 year<br />(1070 rows)<br />order by Time | 0.164s  | **0.097s** |
-| **Alert History - Service**<br />(8,507,148 rows)            | `alias` in ('DBB_HPG', 'HNI') & `state_time` in 1 year<br />(474,338 rows) | 2m46.4s | **0.421s** |
-|                                                              | `alias` in ('DBB_HPG', 'HNI') & `state_time` in 1 year<br /> order by `Time`<br />(474,338 rows) | 2m48.5s | **0.584s** |
-|                                                              | `alias` in ('DBB_HPG', 'HNI') & `state_time` in 1 year<br /> limit 50000<br />(50,000 rows) | 11.021s | **0.102s** |
-|                                                              | `alias` in ('DBB_HPG', 'HNI') & `state_time` in 1 year<br />order by `Time`<br />limit 50000<br />(50,000 rows) | 2m46.9s | **0.375s** |
+| Queries                                           | Filters                                                      | MariaDB | ClickHouse |
+| ------------------------------------------------- | ------------------------------------------------------------ | ------- | ---------- |
+| **SLA Report**<br />(3,276,715 rows)              | `object_id`: 203680 & `state_time` in 2 months <br />(4247 rows) | 0.184s  | **0.010s** |
+|                                                   | `object_id`: 203680 & `state_time` in 5 months<br />(4334 rows) | 0.173s  | **0.012s** |
+|                                                   | `object_id`: 60747 & `state_time` in 2 months <br />(28,776 rows) | 0.878s  | **0.012s** |
+|                                                   | `object_id`: 60747 & `state_time` in 5 months <br />(67,996 rows) | 2.004s  | **0.019s** |
+| **Notification History**<br />(1,098,325 rows)    |                                                              |         |            |
+| **Alert History - Host**<br />(19,349 rows)       | `alias` in ('DBB_HPG', 'HNI') & `state_time` in 1 year<br />(1070 rows) | 0.193s  | **0.102**  |
+|                                                   | `alias` IN ('DBB_HPG', 'HNI') & `state_time` in 1 year<br />(1070 rows)<br />order by Time | 0.164s  | **0.097s** |
+| **Alert History - Service**<br />(8,507,148 rows) | `alias` in ('DBB_HPG', 'HNI') & `state_time` in 1 year<br />(474,338 rows) | 2m46.4s | **0.421s** |
+|                                                   | `alias` in ('DBB_HPG', 'HNI') & `state_time` in 1 year<br /> order by `Time`<br />(474,338 rows) | 2m48.5s | **0.584s** |
+|                                                   | `alias` in ('DBB_HPG', 'HNI') & `state_time` in 1 year<br /> limit 50000<br />(50,000 rows) | 11.021s | **0.102s** |
+|                                                   | `alias` in ('DBB_HPG', 'HNI') & `state_time` in 1 year<br />order by `Time`<br />limit 50000<br />(50,000 rows) | 2m46.9s | **0.375s** |
 
 
 
@@ -167,6 +167,8 @@ ORDER BY Total SETTINGS use_query_cache = 0;
 
 We will benchmark 2 `object_id`: `203680` and `60747` in 2 ranges of `state_time`: 2 months (11 - 12/2024) and 5 months (11/2024 - 3/2025)
 
+a. `203680`
+
 ![image-20250318150858006](./README.assets/image-20250318150858006.png)
 
 - 2 months
@@ -188,6 +190,8 @@ We will benchmark 2 `object_id`: `203680` and `60747` in 2 ranges of `state_time
   ![image-20250318152911716](./README.assets/image-20250318152911716.png)
 
 
+
+b. `60747`
 
 ![image-20250318150952039](./README.assets/image-20250318150952039.png)
 
