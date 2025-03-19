@@ -95,19 +95,19 @@ clickhouse-mysql --src-server-id 1 --migrate-table --src-wait --nice-pause 1 --s
 
 **SUMMARY** (the queries below have disabled caching, but the OS cache remains active)
 
-| Queries                                                      | Filters                                                      | MariaDB | ClickHouse |
-| ------------------------------------------------------------ | ------------------------------------------------------------ | ------- | ---------- |
-| **SLA Report**<br />Table:<br /> `icinga_statehistory`<br />(3,276,715 rows) | `object_id`: 203680 & `state_time` in 2 months <br />(4247 rows) | 0.184s  | **0.010s** |
-|                                                              | `object_id`: 203680 & `state_time` in 5 months<br />(4334 rows) | 0.173s  | **0.012s** |
-|                                                              | `object_id`: 60747 & `state_time` in 2 months <br />(28,776 rows) | 0.878s  | **0.012s** |
-|                                                              | `object_id`: 60747 & `state_time` in 5 months <br />(67,996 rows) | 2.004s  | **0.019s** |
-| **Notification History**<br />Tables:<br />`icinga_contactnotifications`<br />`icinga_notifications`<br />`icinga_objects`<br />`icinga_contactnotificationmethods`<br />(1,098,325 rows) |                                                              |         |            |
-| **Alert History - Host**<br />Tables:<br />`icinga_statehistory`<br />`icinga_hostgroup_members`<br />`icinga_hostgroups`<br />`icinga_objects`<br />(19,349 rows) | `alias` in ('DBB_HPG', 'HNI') & `state_time` in 1 year<br />(1070 rows) | 0.193s  | **0.102**  |
-|                                                              | `alias` IN ('DBB_HPG', 'HNI') & `state_time` in 1 year<br />(1070 rows)<br />order by Time | 0.164s  | **0.097s** |
-| **Alert History - Service**<br />Tables:<br />`icinga_statehistory`<br />`icinga_services`<br />`icinga_hosts`<br />`icinga_hostgroup_members`<br />`icinga_hostgroups`<br />(8,507,148 rows) | `alias` in ('DBB_HPG', 'HNI') & `state_time` in 1 year<br />(474,338 rows) | 2m46.4s | **0.421s** |
-|                                                              | `alias` in ('DBB_HPG', 'HNI') & `state_time` in 1 year<br /> order by `Time`<br />(474,338 rows) | 2m48.5s | **0.584s** |
-|                                                              | `alias` in ('DBB_HPG', 'HNI') & `state_time` in 1 year<br /> limit 50000<br />(50,000 rows) | 11.021s | **0.102s** |
-|                                                              | `alias` in ('DBB_HPG', 'HNI') & `state_time` in 1 year<br />order by `Time`<br />limit 50000<br />(50,000 rows) | 2m46.9s | **0.375s** |
+| Queries                                                      | Filters                                                      | MariaDB    | ClickHouse |
+| ------------------------------------------------------------ | ------------------------------------------------------------ | ---------- | ---------- |
+| **SLA Report**<br />Table:<br /> `icinga_statehistory`<br />(3,276,715 rows) | `object_id`: 203680 & `state_time` in 2 months <br />(4247 rows) | 0.184s     | **0.010s** |
+|                                                              | `object_id`: 203680 & `state_time` in 5 months<br />(4334 rows) | 0.173s     | **0.012s** |
+|                                                              | `object_id`: 60747 & `state_time` in 2 months <br />(28,776 rows) | 0.878s     | **0.012s** |
+|                                                              | `object_id`: 60747 & `state_time` in 5 months <br />(67,996 rows) | 2.004s     | **0.019s** |
+| **Notification History**<br />Tables:<br />`icinga_contactnotifications`<br />`icinga_notifications`<br />`icinga_objects`<br />`icinga_contactnotificationmethods`<br />(1,098,325 rows) | `state_time` in 1 year & `objecttype_id` = 1 & `name1` in (...) & `notification_id` > 33798706 (for limitation) <br />order by `start_time` desc<br />(245 rows) | **0.005s** | 1.388s     |
+| **Alert History - Host**<br />Tables:<br />`icinga_statehistory`<br />`icinga_hostgroup_members`<br />`icinga_hostgroups`<br />`icinga_objects`<br />(19,349 rows) | `alias` in ('DBB_HPG', 'HNI') & `state_time` in 1 year<br />(1070 rows) | 0.193s     | **0.102**  |
+|                                                              | `alias` IN ('DBB_HPG', 'HNI') & `state_time` in 1 year<br />(1070 rows)<br />order by Time | 0.164s     | **0.097s** |
+| **Alert History - Service**<br />Tables:<br />`icinga_statehistory`<br />`icinga_services`<br />`icinga_hosts`<br />`icinga_hostgroup_members`<br />`icinga_hostgroups`<br />(8,507,148 rows) | `alias` in ('DBB_HPG', 'HNI') & `state_time` in 1 year<br />(474,338 rows) | 2m46.4s    | **0.421s** |
+|                                                              | `alias` in ('DBB_HPG', 'HNI') & `state_time` in 1 year<br /> order by `Time`<br />(474,338 rows) | 2m48.5s    | **0.584s** |
+|                                                              | `alias` in ('DBB_HPG', 'HNI') & `state_time` in 1 year<br /> limit 50000<br />(50,000 rows) | 11.021s    | **0.102s** |
+|                                                              | `alias` in ('DBB_HPG', 'HNI') & `state_time` in 1 year<br />order by `Time`<br />limit 50000<br />(50,000 rows) | 2m46.9s    | **0.375s** |
 
 
 
@@ -364,6 +364,33 @@ ORDER BY n.start_time DESC SETTINGS use_query_cache = 0;
 ![image-20250307111542224](./README.assets/image-20250307111542224.png)
 
 ![image-20250318155419059](./README.assets/image-20250318155419059.png)
+
+Optimize JOIN ClickHouse:
+
+- Keep the smaller table on the right-hand side of the join (swap `icinga_contactnotifications` and `icinga_notifications`)
+- Also add filter for the right-hand side table (c.start_time)
+- Use `LEFT ANY JOIN` instead of `JOIN`
+
+```sql
+# ...
+FROM
+  icinga_notifications n
+JOIN icinga_contactnotifications c ON c.instance_id = n.instance_id AND c.notification_id = n.notification_id
+JOIN icinga_objects oc ON c.contact_object_id = oc.object_id
+JOIN icinga_objects oh ON n.object_id = oh.object_id
+LEFT any JOIN icinga_contactnotificationmethods cn ON cn.contactnotification_id = c.contactnotification_id
+LEFT any JOIN icinga_objects occ ON cn.command_object_id = occ.object_id
+WHERE n.start_time BETWEEN '2023-11-15' AND '2025-12-15'
+  and c.start_time BETWEEN '2023-11-15' AND '2025-12-15'
+  AND oh.objecttype_id = 1
+  AND oh.name1 in ('ME-CSR-HNI-C119.5---HN_HBT_CHUA_VUA','ME-CSR-HNI-C173.2---H2_MLH_YEN_NHAN','ME-CSR-HNI-C59.3---HN_DDA_NGO_CHIEN_THANG','ME-CSR-HNI-C85.9---HN_NTL_MY_DINH_1','ME-CSR-HNI-C39.2---HN_HKM_BA_TRIEU','ME-CSR-HNI-C25.6---HN_HBT_NGUYEN_KHOAI','ME-CSR-HNI-C118.4---HN_HBT_VTC_LAC_TRUNG_TOWER_IBC','ME-CSR-HNI-C5.5---HN_DDA_KHUONG_THUONG')
+  AND n.notification_id > ((SELECT max(notification_id) FROM icinga_notifications) - 400000000)
+ORDER BY n.start_time DESC SETTINGS use_query_cache = 0;
+```
+
+![image-20250319150019636](./README.assets/image-20250319150019636.png)
+
+
 
 
 
